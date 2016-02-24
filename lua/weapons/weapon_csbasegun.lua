@@ -389,9 +389,9 @@ if CLIENT then
 
 			if self.ScopeFallback then
 				surface.DrawTexturedRect( x - ( ScrH() / 2	) , 0 , ScrH() , ScrH() )
-                surface.DrawRect(0, 0, math.ceil(x - ScrH() / 2), ScrH())
-                surface.DrawRect(0, 0, math.ceil(x - ScrH() / 2), ScrH())
-                surface.DrawRect(math.floor(x + ScrH() / 2), 0, math.ceil(x - ScrH() / 2), ScrH())
+				surface.DrawRect(0, 0, math.ceil(x - ScrH() / 2), ScrH())
+				surface.DrawRect(0, 0, math.ceil(x - ScrH() / 2), ScrH())
+				surface.DrawRect(math.floor(x + ScrH() / 2), 0, math.ceil(x - ScrH() / 2), ScrH())
 				--Jvs TODO: fill in the rest of the screen as well
 			end
 

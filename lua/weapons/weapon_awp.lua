@@ -156,11 +156,11 @@ function SWEP:SecondaryAttack()
 
 	if ( pPlayer:GetFOV() == self:GetDefaultFOV() ) then
 		pPlayer:SetFOV( 40, 0.15 );
-    elseif ( pPlayer:GetFOV() == 40 ) then
+	elseif ( pPlayer:GetFOV() == 40 ) then
 		pPlayer:SetFOV( 10, 0.08 );
 	else
 		pPlayer:SetFOV( self:GetDefaultFOV(), 0.1 );
-    end
+	end
 
 	pPlayer:ResetMaxSpeed();
 
@@ -176,36 +176,36 @@ end
 
 function SWEP:GetDefaultFOV()
 
-    if (not self.m_fDefaultFOVHack) then
-        self.m_fDefaultFOVHack = self:GetOwner():GetFOV()
-    end
+	if (not self.m_fDefaultFOVHack) then
+		self.m_fDefaultFOVHack = self:GetOwner():GetFOV()
+	end
 
-    return self.m_fDefaultFOVHack
+	return self.m_fDefaultFOVHack
 
 end
 
 function SWEP:AdjustMouseSensitivity()
 
-    if (self:IsScoped()) then
+	if (self:IsScoped()) then
 
-        -- is a hack, maybe change?
-        return self:GetOwner():GetFOV() / self:GetDefaultFOV() * GetConVar "zoom_sensitivity_ratio":GetFloat()
+		-- is a hack, maybe change?
+		return self:GetOwner():GetFOV() / self:GetDefaultFOV() * GetConVar "zoom_sensitivity_ratio":GetFloat()
 
-    end
+	end
 end
 
 function SWEP:GetMaxSpeed()
 
-    if ( not self:IsScoped() ) then
-        return self:GetOwner().DefaultMaxSpeed -- TODO: not do this
-    else
+	if ( not self:IsScoped() ) then
+		return self:GetOwner().DefaultMaxSpeed -- TODO: not do this
+	else
 		-- Slower speed when zoomed in.
 		return 150
 	end
 end
 
 function SWEP:IsScoped()
-    return self:GetDefaultFOV() >= self:GetOwner():GetFOV() + 1
+	return self:GetDefaultFOV() >= self:GetOwner():GetFOV() + 1
 end
 
 function SWEP:GunFire( spread )
