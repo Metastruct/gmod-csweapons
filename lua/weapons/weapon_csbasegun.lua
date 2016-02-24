@@ -1,4 +1,7 @@
 AddCSLuaFile()
+local function FloatEquals(x,y)
+    return math.abs(x-y) < 1.19209290E-07
+end
 
 DEFINE_BASECLASS( "weapon_csbase" )
 
@@ -23,15 +26,19 @@ function SWEP:SetupDataTables()
 	self:NetworkVar( "Float" , 7 , "NextBurstFire" ) 	--when the next burstfire is gonna happen, same as nextprimaryattack
 	self:NetworkVar( "Float" , 8 , "DoneSwitchingSilencer" )
 	self:NetworkVar( "Float" , 9 , "BurstFireDelay" )	--the speed of the burst fire itself, 0.5 means two shots every second etc
-	self:NetworkVar( "Float" , 10 , "LastFire" )
+	self:NetworkVar( "Float" , 10, "LastFire" )
+	self:NetworkVar( "Float" , 11, "TargetFOVRatio" )
+	self:NetworkVar( "Float" , 12, "TargetFOVStartTime" )
+	self:NetworkVar( "Float" , 13, "TargetFOVTime" )
+	self:NetworkVar( "Float" , 14, "CurrentFOVRatio" )
+	self:NetworkVar( "Float" , 15, "StoredFOVRatio" )
+    self:NetworkVar( "Float" , 16 , "LastZoom" )
 
 	self:NetworkVar( "Bool" , 4 , "BurstFireEnabled" )
+    self:NetworkVar( "Bool" , 5 , "ResumeZoom" )
 
 	self:NetworkVar( "Int" , 4 , "BurstFires" )			--goes from X to 0, how many burst fires we're going to do
 	self:NetworkVar( "Int" , 5 , "MaxBurstFires" )
-
-
-
 
 end
 
@@ -41,6 +48,11 @@ function SWEP:Deploy()
 	self:SetAccuracy( 0.2 )
 	self:SetBurstFireEnabled( false )
 	self:SetBurstFires( self:GetMaxBurstFires() )
+    self:SetCurrentFOVRatio(1)
+    self:SetTargetFOVRatio(1)
+    self:SetStoredFOVRatio(1)
+    self:SetTargetFOVStartTime(0)
+    self:SetTargetFOVTime(0)
 
 	return BaseClass.Deploy( self )
 end
@@ -52,28 +64,62 @@ end
 --Jvs : this function handles the zoom smoothing and decay
 
 function SWEP:HandleZoom()
-	--Jvs: TODO, I don't know what this code actually does, but it seems important for their AWP crap to prevent accuracy exploits or some other shit
 
---[[
 	--GOOSEMAN : Return zoom level back to previous zoom level before we fired a shot. This is used only for the AWP.
 	-- And Scout.
-	if ( (m_flNextPrimaryAttack <= gpGlobals->curtime) && (pPlayer->m_bResumeZoom == TRUE) )
-	{
-#ifndef CLIENT_DLL
-		pPlayer->SetFOV( pPlayer, pPlayer->m_iLastZoom, 0.05f )
-		m_zoomFullyActiveTime = gpGlobals->curtime + 0.05f-- Make sure we think that we are zooming on the server so we don't get instant acc bonus
 
-		if ( pPlayer->GetFOV() == pPlayer->m_iLastZoom )
-		{
+    local pPlayer = self:GetOwner()
+
+	if ( (self:GetNextPrimaryAttack() <= CurTime()) and self:GetResumeZoom() ) then
+
+		if (self:GetFOVRatio() == self:GetLastZoom()) then
 			-- return the fade level in zoom.
-			pPlayer->m_bResumeZoom = false
-		}
-#endif
-	}
-]]
+			self:SetResumeZoom(false)
+            return
+        end
+		self:SetFOVRatio( self:GetLastZoom(), 0.05 )
+        self:SetNextPrimaryAttack(CurTime() + 0.05)
+		self:SetZoomFullyActiveTime( CurTime() + 0.05) -- Make sure we think that we are zooming on the server so we don't get instant acc bonus
+
+    end
+end
+
+function SWEP:FOVThink()
+    local fovratio
+
+    local deltaTime = (CurTime() - self:GetTargetFOVStartTime()) / self:GetTargetFOVTime()
+
+    if (deltaTime > 1 or self:GetTargetFOVTime() == 0) then
+        fovratio = self:GetTargetFOVRatio()
+    else
+        fovratio = Lerp(math.Clamp(deltaTime, 0, 1), self:GetStoredFOVRatio(), self:GetTargetFOVRatio())
+    end
+    self:SetCurrentFOVRatio(fovratio)
+end
+
+function SWEP:SetFOVRatio( fov, time )
+
+    if (self:GetFOVRatio() ~= self:GetStoredFOVRatio()) then
+        self:SetStoredFOVRatio(self:GetFOVRatio())
+    end
+
+    self:SetTargetFOVRatio( fov == 0 and 1 or fov)
+    self:SetTargetFOVTime(time)
+    self:SetTargetFOVStartTime(CurTime())
+
+end
+
+function SWEP:GetFOVRatio()
+    return self:GetCurrentFOVRatio()
+end
+
+function SWEP:TranslateFOV( fov )
+    return fov * self:GetFOVRatio()
 end
 
 function SWEP:Think()
+
+    self:FOVThink()
 
 	self:UpdateWorldModel()
 
@@ -339,8 +385,8 @@ if CLIENT then
 
 	end
 
-	SWEP.ScopeArcTexture = Material( "gmod/scope.vmt" )
-	SWEP.ScopeDustTexture = Material( "" )
+	SWEP.ScopeArcTexture = Material( "sprites/scope_arc" )
+	SWEP.ScopeDustTexture = Material( "overlays/scope_lens.vmt" )
 	SWEP.ScopeFallback = true
 
 	--[[
@@ -381,25 +427,41 @@ if CLIENT then
 
 
 			surface.SetDrawColor( color_black )
-			surface.SetMaterial( self.ScopeArcTexture )
 
 			--Draw the reticle with primitives
 			surface.DrawLine( 0, y, screenWide, y )
 			surface.DrawLine( x, 0, x, screenTall )
 
-			if self.ScopeFallback then
-				surface.DrawTexturedRect( x - ( ScrH() / 2	) , 0 , ScrH() , ScrH() )
-				surface.DrawRect(0, 0, math.ceil(x - ScrH() / 2), ScrH())
-				surface.DrawRect(0, 0, math.ceil(x - ScrH() / 2), ScrH())
-				surface.DrawRect(math.floor(x + ScrH() / 2), 0, math.ceil(x - ScrH() / 2), ScrH())
-				--Jvs TODO: fill in the rest of the screen as well
-			end
+            -- scope dust
+			surface.SetMaterial( self.ScopeDustTexture )
+			surface.DrawTexturedRect(x - ( ScrH() / 2 ) , 0 , ScrH() , ScrH())
+
+
+            -- scope arc
+			surface.SetMaterial( self.ScopeArcTexture )
+
+            -- top right
+            surface.DrawTexturedRectUV(x, 0, ScrH() / 2, ScrH() / 2, 0, 1, 1, 0)
+
+            -- top left
+            surface.DrawTexturedRectUV(x - ScrH() / 2, 0, ScrH() / 2, ScrH() / 2, 1, 1, 0, 0)
+
+            -- bottom left
+            surface.DrawTexturedRectUV(x - ScrH() / 2, ScrH() / 2, ScrH() / 2, ScrH() / 2, 1, 0, 0, 1)
+            -- bottom right
+            surface.DrawTexturedRect(x, ScrH() / 2, ScrH() / 2, ScrH() / 2)
+
+			surface.DrawRect(0, 0, math.ceil(x - ScrH() / 2), ScrH())
+			surface.DrawRect(0, 0, math.ceil(x - ScrH() / 2), ScrH())
+			surface.DrawRect(math.floor(x + ScrH() / 2), 0, math.ceil(x - ScrH() / 2), ScrH())
 
 			--[[
 				Jvs:can't use the code below until I find a good replacement for the scope, or I get Robotboy to add
 				the scope texture to gmod
 				Alternatively, I could make it so it uses the fallback above if CS:S isn't mounted, which sounds more reasonable
 			]]
+
+
 
 			--[[
 			vgui::Vertex_t vert[4]

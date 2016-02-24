@@ -1,6 +1,9 @@
 AddCSLuaFile()
 DEFINE_BASECLASS( "weapon_csbasegun" )
 
+local function FloatEquals(x,y)
+    return math.abs(x-y) < 1.19209290E-07
+end
 
 --Jvs: I wish this weapon defining shit was this easy
 CSParseWeaponInfo( SWEP , [[WeaponData
@@ -125,6 +128,7 @@ CSParseWeaponInfo( SWEP , [[WeaponData
 
 SWEP.Spawnable = true
 
+
 function SWEP:Initialize()
 	BaseClass.Initialize( self )
 	self:SetHoldType( "ar2" )
@@ -153,16 +157,20 @@ function SWEP:SecondaryAttack()
 	if not IsValid(pPlayer) then
 		return;
 	end
+    if (self:GetZoomFullyActiveTime() > CurTime()) then
+        self:SetNextSecondaryFire(self:GetZoomFullyActiveTime() + 0.15)
+        return
+    end
 
-	if ( pPlayer:GetFOV() == self:GetDefaultFOV() ) then
-		pPlayer:SetFOV( 40, 0.15 );
-	elseif ( pPlayer:GetFOV() == 40 ) then
-		pPlayer:SetFOV( 10, 0.08 );
-	else
-		pPlayer:SetFOV( self:GetDefaultFOV(), 0.1 );
-	end
-
-	pPlayer:ResetMaxSpeed();
+    if (IsFirstTimePredicted()) then
+    	if ( not self:IsScoped() ) then
+    		self:SetFOVRatio( 40/90, 0.15 );
+    	elseif (FloatEquals(self:GetFOVRatio(), 40/90)) then
+    		self:SetFOVRatio( 10/90, 0.08 );
+    	else
+    		self:SetFOVRatio( 1, 0.1 );
+    	end
+    end
 
 	-- If this isn't guarded, the sound will be emitted twice, once by the server and once by the client.
 	-- Let the server play it since if only the client plays it, it's liable to get played twice cause of
@@ -170,26 +178,17 @@ function SWEP:SecondaryAttack()
 	self:EmitSound("Default.Zoom", nil, nil, nil, CHAN_AUTO);
 
 	self:SetNextSecondaryFire(CurTime() + 0.3);
-	self.m_zoomFullyActiveTime = CurTime() + 0.15; // The worst zoom time from above.
+	self:SetZoomFullyActiveTime(CurTime() + 0.15); -- The worst zoom time from above.
 
 end
 
-function SWEP:GetDefaultFOV()
-
-	if (not self.m_fDefaultFOVHack) then
-		self.m_fDefaultFOVHack = self:GetOwner():GetFOV()
-	end
-
-	return self.m_fDefaultFOVHack
-
-end
 
 function SWEP:AdjustMouseSensitivity()
 
 	if (self:IsScoped()) then
 
 		-- is a hack, maybe change?
-		return self:GetOwner():GetFOV() / self:GetDefaultFOV() * GetConVar "zoom_sensitivity_ratio":GetFloat()
+		return self:GetCurrentFOVRatio() * GetConVar "zoom_sensitivity_ratio":GetFloat()
 
 	end
 end
@@ -205,14 +204,46 @@ function SWEP:GetMaxSpeed()
 end
 
 function SWEP:IsScoped()
-	return self:GetDefaultFOV() >= self:GetOwner():GetFOV() + 1
+	return self:GetTargetFOVRatio() ~= 1
+end
+
+function SWEP:HandleReload()
+
+    self:SetFOVRatio(1, 0.05)
+
+end
+
+function SWEP:GetSpeedRatio()
+
+    if (self:IsScoped()) then
+        return 0.5
+    end
+
+    return 1
+
 end
 
 function SWEP:GunFire( spread )
 
-	if (self:GetOwner():GetFOV() == self:GetDefaultFOV() || (CurTime() < self.m_zoomFullyActiveTime)) then
+    local pPlayer = self:GetOwner()
+
+    if (CurTime() < self:GetZoomFullyActiveTime()) then
+
+        self:SetNextPrimaryAttack(self:GetZoomFullyActiveTime())
+        return
+
+    end
+
+	if (not self:IsScoped()) then
 		spread = spread + .08
 	end
+
+    if (self:IsScoped()) then
+        self:SetLastZoom(self:GetTargetFOVRatio());
+
+        self:SetResumeZoom(true);
+        self:SetFOVRatio( 1, 0.1 );
+    end
 
 	if not self:BaseGunFire( spread, self:GetWeaponInfo().CycleTime, true ) then
 		return

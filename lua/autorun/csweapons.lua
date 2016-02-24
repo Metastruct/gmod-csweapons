@@ -263,42 +263,6 @@ if CLIENT then
 
 end
 
-local PLAYER = FindMetaTable "Player"
--- nothing without a little hack here and there
-
-PLAYER.OLD_SetMaxSpeed = PLAYER.OLD_SetMaxSpeed or PLAYER.SetMaxSpeed
-
-function PLAYER:SetMaxSpeed(n)
-
-    self.DefaultMaxSpeed = n
-
-    self:OLD_SetMaxSpeed(n)
-
-end
-
-function PLAYER:ResetMaxSpeed()
-
-    if (not self.DefaultMaxSpeed) then
-        self.DefaultMaxSpeed = self:GetMaxSpeed()
-    end
-
-	local speed;
-
-	local pWeapon = self:GetActiveWeapon();
-	if ( self:GetObserverMode() ~= OBS_MODE_NONE ) then
-		-- Player gets speed bonus in observer mode
-		speed = self.DefaultMaxSpeed + 560;
-    elseif IsValid(pWeapon) and pWeapon.GetMaxSpeed then
-		speed = pWeapon:GetMaxSpeed(); -- Get player speed from selected weapon
-	else
-		-- No active item, set the player's speed to default
-		speed = self.DefaultMaxSpeed;
-    end
-
-	self:OLD_SetMaxSpeed( speed );
-end
-
-
 local classlist = {}
 
 function CSParseWeaponInfo( self,  str )
