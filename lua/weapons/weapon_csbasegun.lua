@@ -166,7 +166,7 @@ function SWEP:DoFireEffects()
 		local data = EffectData()
 		data:SetFlags( 0 )
 		data:SetEntity( self )
-		data:SetAttachment( 1 )	--TODO: self:LookupAttachment( "muzzle" ) or whatever it's called
+		data:SetAttachment(self:LookupAttachment("muzzle"))
 		data:SetScale( self:GetWeaponInfo().MuzzleFlashScale )
 
 		if self.CSMuzzleX then
@@ -259,13 +259,13 @@ function SWEP:BaseGunFire( spread , cycletime , primarymode )
 end
 
 function SWEP:ToggleBurstFire()
-	if IsValid( self:GetOwner() ) and self:GetOwner():IsPlayer() then
-		if self:GetBurstFireEnabled() then
-			--self:GetOwner():PrintMessage( HUD_PRINTCENTER, "#Switch_To_SemiAuto" )
-		else
-			--self:GetOwner():PrintMessage( HUD_PRINTCENTER, "#Switch_To_BurstFire" )
-		end
-	end
+	if IsValid(self:GetOwner()) and self:GetOwner():IsPlayer() then
+        if self:GetBurstFireEnabled() then
+            self:GetOwner():PrintMessage(HUD_PRINTCENTER, tobool(tonumber(self:GetWeaponInfo().FullAuto)) and "#Cstrike_TitlesTXT_Switch_To_FullAuto" or "#Cstrike_TitlesTXT_Switch_To_SemiAuto")
+        else
+            self:GetOwner():PrintMessage(HUD_PRINTCENTER, "#Cstrike_TitlesTXT_Switch_To_BurstFire")
+        end
+    end
 
 	self:SetBurstFireEnabled( not self:GetBurstFireEnabled() )
 end
@@ -621,18 +621,14 @@ if CLIENT then
 	]]
 
 	function SWEP:DoDrawCrosshair( x , y )
-		if self:IsScoped() or self:GetWeaponType() == CS_WEAPONTYPE_SNIPER_RIFLE then
+		if self:GetWeaponType() == CS_WEAPONTYPE_SNIPER_RIFLE then
 			return true
 		end
 		return BaseClass.DoDrawCrosshair( self , x , y )
 	end
 
-
-
-	--Jvs: should this technically be done in DoDrawCrosshair? DrawHUD is technically drawn in the gmod hud element
-
-	function SWEP:DrawHUD()
-		if self:IsScoped() then
+	function SWEP:DrawHUDBackground()
+		if self:IsScoped() and self:GetWeaponType() == CS_WEAPONTYPE_SNIPER_RIFLE then
 			local screenWide, screenTall = ScrW() , ScrH()
 
 			-- calculate the bounds in which we should draw the scope
