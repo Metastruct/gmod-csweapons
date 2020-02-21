@@ -135,18 +135,28 @@ SWEP.SlotPos = 0
 function SWEP:Initialize()
 	BaseClass.Initialize( self )
 	self:SetHoldType( "ar2" )
+    self:SetBurstFireEnabled(false)
+    self:SetMaxBurstFires(3)
+    self:SetBurstFireDelay(0.05)
 	self:SetWeaponID( CS_WEAPON_FAMAS )
 end
 
 function SWEP:PrimaryAttack()
 	if self:GetNextPrimaryAttack() > CurTime() then return end
 
-	self:GunFire( self:BuildSpread() )
+	self:GunFire( self:BuildSpread(), self:GetBurstFireEnabled() )
 end
 
-function SWEP:GunFire( spread )
+function SWEP:GunFire( spread, mode )
+    local cycleTime = self:GetWeaponInfo().CycleTime
 
-	if not self:BaseGunFire( spread, self:GetWeaponInfo().CycleTime, true ) then
+    if mode then
+        cycleTime = 0.55
+    else
+        spread = spread + 0.01
+    end
+
+	if not self:BaseGunFire( spread, cycleTime, mode ) then
 		return
 	end
 
@@ -159,4 +169,11 @@ function SWEP:GunFire( spread )
 	else
 		self:KickBack( 0.3, 0.225, 0.125, 0.02, 3.25, 1.25, 8 )
 	end
+end
+
+function SWEP:SecondaryAttack()
+    if self:GetNextSecondaryAttack() > CurTime() then return end
+
+    self:ToggleBurstFire()
+    self:SetNextSecondaryAttack(CurTime() + 0.3)
 end
