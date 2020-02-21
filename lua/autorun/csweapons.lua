@@ -385,6 +385,10 @@ if CLIENT then
 	f"XM1014"
 	f"C4"
 
+	language.Add("Cstrike_TitlesTXT_Switch_To_BurstFire", "Switched to burst-fire mode")
+	language.Add("Cstrike_TitlesTXT_Switch_To_FullAuto", "Switched to automatic")
+	language.Add("Cstrike_TitlesTXT_Switch_To_SemiAuto", "Switched to semi-automatic")
+
 	-- Ammos
 	for str,trans in next,{
 	["50AE"] = "50 ae",
