@@ -356,11 +356,11 @@ if CLIENT then
 	end
 
 	f("AK47","AK-47")
-	f"Aug"
+	f"AUG"
 	f"AWP"
 	f("DesertEagle","Desert Eagle")
 	f"Elites"
-	f"Famas"
+	f"FAMAS"
 	f"FiveSeven"
 	f"Flashbang"
 	f"G3SG1"
@@ -369,7 +369,7 @@ if CLIENT then
 	f("HE_Grenade","HE Grenade")
 	f"Knife"
 	f"M249"
-	f"m3"
+	f"M3"
 	f"M4A1"
 	f"MAC10"
 	f"MP5"
@@ -378,11 +378,11 @@ if CLIENT then
 	f"Scout"
 	f"SG550"
 	f"SG552"
-	f("Smoke_Grenade","Smoke grenade")
-	f"Tmp"
+	f("Smoke_Grenade","Smoke Grenade")
+	f"TMP"
 	f"UMP45"
 	f"USP45"
-	f"xm1014"
+	f"XM1014"
 	f"C4"
 
 	-- Ammos
