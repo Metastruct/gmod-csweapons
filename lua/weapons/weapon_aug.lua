@@ -138,42 +138,27 @@ function SWEP:Initialize()
 	self:SetWeaponID( CS_WEAPON_AUG )
 end
 
-function SWEP:PrimaryAttack()
-	if self:GetNextPrimaryAttack() > CurTime() then return end
-
-	self:GunFire(self:BuildSpread())
-
+function SWEP:PreDrawViewModel(vm, weapon, ply)
 end
 
 function SWEP:SecondaryAttack()
-	local pPlayer = self:GetOwner();
+    local pPlayer = self:GetOwner()
+    if not IsValid(pPlayer) then return end
 
-	if not IsValid(pPlayer) then
-		return;
-	end
-	if (self:GetZoomFullyActiveTime() > CurTime() or self:GetNextPrimaryAttack() > CurTime()) then
-		self:SetNextSecondaryFire(self:GetZoomFullyActiveTime() + 0.15)
-		return
-	end
+    if self:GetZoomFullyActiveTime() > CurTime() or self:GetNextPrimaryAttack() > CurTime() then
+        self:SetNextSecondaryFire(self:GetZoomFullyActiveTime() + 0.15)
+        return
+    end
 
-	if ( not self:IsScoped() ) then
-		self:SetFOVRatio( 40/90, 0.15 );
-	elseif (FloatEquals(self:GetFOVRatio(), 40/90)) then
-		self:SetFOVRatio( 10/90, 0.08 );
-	else
-		self:SetFOVRatio( 1, 0.1 );
-	end
+    if not self:IsScoped() then
+        self:SetFOVRatio(55 / 90, 0.2)
+    else
+        self:SetFOVRatio(1, 0.15)
+    end
 
-	-- If this isn't guarded, the sound will be emitted twice, once by the server and once by the client.
-	-- Let the server play it since if only the client plays it, it's liable to get played twice cause of
-	-- a prediction error. joy.
-	self:EmitSound("Default.Zoom", nil, nil, nil, CHAN_AUTO);
-
-	self:SetNextSecondaryFire(CurTime() + 0.3);
-	self:SetZoomFullyActiveTime(CurTime() + 0.15); -- The worst zoom time from above.
-
+    self:SetNextSecondaryFire(CurTime() + 0.3)
+    self:SetZoomFullyActiveTime(CurTime() + 0.2)
 end
-
 
 function SWEP:AdjustMouseSensitivity()
 
@@ -205,26 +190,33 @@ function SWEP:GetSpeedRatio()
 
 end
 
+function SWEP:PrimaryAttack()
+    if self:GetNextPrimaryAttack() > CurTime() then return end
+
+    self:GunFire(self:BuildSpread())
+end
+
 function SWEP:GunFire( spread )
+    local cycleTime = self:GetWeaponInfo().CycleTime
 
-	local pPlayer = self:GetOwner()
+    if self:IsScoped() then
+        cycleTime = 0.135
+    end
 
-	if (CurTime() < self:GetZoomFullyActiveTime()) then
+    if not self:BaseGunFire(spread, cycleTime, true) then
+        return
+    end
 
-		self:SetNextPrimaryAttack(self:GetZoomFullyActiveTime())
-		return
+    local pPlayer = self:GetOwner()
+    if not IsValid(pPlayer) then return end
 
-	end
-
-	if (not self:IsScoped()) then
-		spread = spread + .08
-	end
-
-	if not self:BaseGunFire( spread, self:GetWeaponInfo().CycleTime, true ) then
-		return
-	end
-
-	local a = self:GetOwner():GetViewPunchAngles( )
-	a.p = a.p - 2
-	self:GetOwner():SetViewPunchAngles( a )
+    if pPlayer:GetAbsVelocity():Length2D() > 5 then
+        self:KickBack(1, 0.45, 0.275, 0.05, 4, 2.5, 7)
+    elseif not pPlayer:OnGround() then
+        self:KickBack(1.25, 0.45, 0.22, 0.18, 5.5, 4, 5)
+    elseif pPlayer:Crouching() then
+        self:KickBack(0.575, 0.325, 0.2, 0.011, 3.25, 2, 8)
+    else
+        self:KickBack(0.625, 0.375, 0.25, 0.0125, 3.5, 2.25, 8)
+    end
 end
