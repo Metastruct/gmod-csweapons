@@ -120,103 +120,154 @@ SWEP.Spawnable = true
 SWEP.Slot = 0
 SWEP.SlotPos = 0
 
+function SWEP:SetupDataTables()
+    BaseClass.SetupDataTables( self )
+
+    self:NetworkVar("Int", 6, "SpecialReload")
+    self:NetworkVar("Float", 17, "PumpTime")
+end
+
 function SWEP:Initialize()
-	BaseClass.Initialize( self )
-	self:SetHoldType( "shotgun" )
-	self:SetWeaponID( CS_WEAPON_M3 )
+    BaseClass.Initialize(self)
+    self:SetHoldType("shotgun")
+    self:SetPumpTime(0)
+    self:SetWeaponID(CS_WEAPON_M3)
 end
 
 function SWEP:PrimaryAttack()
+    if self:GetNextPrimaryAttack() > CurTime() then return end
 
-	if self:GetNextPrimaryAttack() > CurTime() then return end
+    local pPlayer = self:GetOwner()
+    if not IsValid(pPlayer) then return end
 
-	local owner = self:GetOwner()
-	if owner:WaterLevel()==3 then
-		self:PlayEmptySound()
-		self:SetNextPrimaryAttack( CurTime() + 0.2 )
-		return false
-	end
+    if pPlayer:WaterLevel() == 3 then
+        self:PlayEmptySound()
+        self:SetNextPrimaryAttack(CurTime() + 0.15)
+        return false
+    end
 
-		-- Out of ammo?
-	if self:Clip1() <= 0 then
-		self:PlayEmptySound()
-		self:SetNextPrimaryAttack( CurTime() + 0.2 )
-		return false
-	end
+    -- Out of ammo?
+    if self:Clip1() <= 0 then
+        self:Reload()
+        if self:Clip1() == 0 then
+            self:PlayEmptySound()
+            self:SetNextPrimaryAttack(CurTime() + 0.2)
+        end
+        return false
+    end
 
+    self:SendWeaponAnim(self:TranslateViewModelActivity(ACT_VM_PRIMARYATTACK))
 
-	local ply = self:GetOwner()
-	local pCSInfo = self:GetWeaponInfo()
-	local iDamage = pCSInfo.Damage
-	local flRangeModifier = pCSInfo.RangeModifier
-	local soundType = "single_shot"
+    self:SetClip1(self:Clip1() - 1)
 
+    -- player "shoot" animation
+    pPlayer:DoAttackEvent()
 
-	self:SendWeaponAnim( self:TranslateViewModelActivity( ACT_VM_PRIMARYATTACK ) )
+    self:FireCSSBullet(pPlayer:GetAimVector():Angle() + 2 * pPlayer:GetViewPunchAngles(), true, 0.0675)
 
-	self:SetClip1( self:Clip1() -1 )
+    self:DoFireEffects()
 
-	-- player "shoot" animation
-	ply:DoAttackEvent()
+    if self:Clip1() ~= 0 then
+        self:SetPumpTime(CurTime() + 0.5)
+    end
 
-	ply:FireBullets {
-		Attacker = ply,
-		AmmoType = self.Primary.Ammo,
-		Distance = pCSInfo.Range,
-		Tracer = 1,
-		Damage = iDamage,
-		Src = ply:GetShootPos(),
-		Dir = dir,
-		Spread = vector_origin,
-		Callback = function( hitent , trace , dmginfo )
-			--TODO: penetration
-			--unfortunately this can't be done with a static function or we'd need to set global variables for range and shit
+    local cycletime = 0.875
+    self:SetNextPrimaryAttack(CurTime() + cycletime)
+    self:SetNextSecondaryAttack(CurTime() + cycletime)
 
-			if flRangeModifier then
-				--Jvs: the damage modifier valve actually uses
-				local flCurrentDistance = trace.Fraction * pCSInfo.Range
-				dmginfo:SetDamage( dmginfo:GetDamage() * math.pow( flRangeModifier, ( flCurrentDistance / 500 ) ) )
-			end
-		end
-	}
+    if self:Clip1() ~= 0 then
+        self:SetNextIdle(CurTime() + 2.5)
+    else
+        self:SetNextIdle(CurTime() + cycletime)
+    end
+    self:SetSpecialReload(0)
 
+    self:SetLastFire(CurTime())
 
-	self:DoFireEffects()
-	local cycletime = .875
+    local angle = pPlayer:GetViewPunchAngles()
 
-	self:SetNextPrimaryAttack( CurTime() + cycletime )
-	self:SetNextSecondaryAttack( CurTime() + cycletime )
+    -- Update punch angles.
+    if not pPlayer:OnGround() then
+        angle.x = angle.x - util.SharedRandom("M3PunchAngleGround", 4, 6)
+    else
+        angle.x = angle.x - util.SharedRandom("M3PunchAngle", 8, 11)
+    end
 
-	if self:Clip1() ~= 0 then
-		self:SetNextIdle( CurTime() + 2.5 )
-	else
-		self:SetNextIdle( CurTime() + cycletime )
-	end
+    pPlayer:SetViewPunchAngles(angle)
 
-	self:SetLastFire( CurTime() )
-
-
-	local angle = self:GetOwner():GetViewPunchAngles()
-
-
-	-- Update punch angles.
-	if not self:GetOwner():OnGround() then
-
-
-		angle.x = angle.x - util.SharedRandom( "M3PunchAngleGround" , 4, 6 )
-
-	else
-
-
-		angle.x = angle.x - util.SharedRandom( "M3PunchAngle" , 8, 11 )
-
-	end
-
-	self:GetOwner():SetViewPunchAngles( angle )
-
-	return true
-
+    return true
 end
 
+function SWEP:Reload()
+    local pPlayer = self:GetOwner()
+    if not IsValid(pPlayer) then return false end
 
-SWEP.AdminOnly = true
+    if pPlayer:GetAmmoCount(self:GetPrimaryAmmoType()) <= 0 or self:Clip1() == self:GetMaxClip1() then
+        return true
+    end
+
+    if self:GetNextPrimaryAttack() > CurTime() then
+        return true
+    end
+
+    if self:GetSpecialReload() == 0 then
+        pPlayer:SetAnimation(PLAYER_RELOAD)
+
+        self:SendWeaponAnim(ACT_SHOTGUN_RELOAD_START)
+        self:SetSpecialReload(1)
+        self:SetNextPrimaryAttack(CurTime() + 0.5)
+        self:SetNextSecondaryAttack(CurTime() + 0.5)
+        self:SetNextIdle(CurTime() + 0.5)
+
+        pPlayer:DoAnimationEvent(PLAYERANIMEVENT_RELOAD)
+
+        return true
+    elseif self:GetSpecialReload() == 1 then
+        if self:GetNextIdle() > CurTime() then
+            return true
+        end
+
+        self:SetSpecialReload(2)
+        self:SendWeaponAnim(ACT_VM_RELOAD)
+        self:SetNextIdle(CurTime() + 0.5)
+
+        if self:Clip1() == self:GetMaxClip1() - 1 then
+            pPlayer:DoAnimationEvent(PLAYERANIMEVENT_RELOAD_END)
+        else
+            pPlayer:DoAnimationEvent(PLAYERANIMEVENT_RELOAD_LOOP)
+        end
+    else
+        self:SetClip1(self:Clip1() + 1)
+        pPlayer:RemoveAmmo(1, self:GetPrimaryAmmoType())
+
+        self:SetSpecialReload(1)
+    end
+
+    return true
+end
+
+function SWEP:Idle()
+    local pPlayer = self:GetOwner()
+    if not IsValid(pPlayer) then return false end
+
+    if self:GetPumpTime() < CurTime() then
+        self:SetPumpTime(0)
+    end
+
+    if CurTime() > self:GetNextIdle() then
+        if self:Clip1() == 0 and self:GetSpecialReload() == 0 and pPlayer:GetAmmoCount(self:GetPrimaryAmmoType()) > 0 then
+            self:Reload()
+        elseif self:GetSpecialReload() ~= 0 then
+            if self:Clip1() ~= self:GetMaxClip1() and pPlayer:GetAmmoCount(self:GetPrimaryAmmoType()) > 0 then
+                self:Reload()
+            else
+                self:SendWeaponAnim(ACT_SHOTGUN_RELOAD_FINISH)
+
+                self:SetSpecialReload(0)
+                self:SetNextIdle(CurTime() + 1.5)
+            end
+        else
+            self:SendWeaponAnim(ACT_VM_IDLE)
+        end
+    end
+end
