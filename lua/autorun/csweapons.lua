@@ -402,6 +402,10 @@ if CLIENT then
 		language.Add("BULLET_PLAYER_"..str..'_ammo',trans)
 	end
 
+	language.Add("Cstrike_TitlesTXT_Switch_To_BurstFire", "Switched to burst-fire mode")
+	language.Add("Cstrike_TitlesTXT_Switch_To_FullAuto", "Switched to automatic")
+	language.Add("Cstrike_TitlesTXT_Switch_To_SemiAuto", "Switched to semi-automatic")
+
 	spawnmenu.AddContentType( "cssweapon", function( container, obj )
 
 			if ( !obj.material ) then return end
