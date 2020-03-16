@@ -121,153 +121,107 @@ SWEP.Slot = 0
 SWEP.SlotPos = 0
 
 function SWEP:SetupDataTables()
-    BaseClass.SetupDataTables( self )
-
-    self:NetworkVar("Int", 6, "SpecialReload")
-    self:NetworkVar("Float", 17, "PumpTime")
+	BaseClass.SetupDataTables( self )
+	self:NetworkVar( "Int", 0, "SpecialReload" )
 end
 
 function SWEP:Initialize()
-    BaseClass.Initialize(self)
-    self:SetHoldType("shotgun")
-    self:SetPumpTime(0)
-    self:SetWeaponID(CS_WEAPON_M3)
+	BaseClass.Initialize( self )
+	self:SetHoldType( "shotgun" )
+	self:SetWeaponID( CS_WEAPON_M3 )
+	self:SetSpecialReload( 0 )
 end
 
 function SWEP:PrimaryAttack()
-    if self:GetNextPrimaryAttack() > CurTime() then return end
+	local pPlayer = self.Owner
+	if not IsValid( pPlayer ) then return end
 
-    local pPlayer = self:GetOwner()
-    if not IsValid(pPlayer) then return end
+	if self:GetNextPrimaryAttack() > CurTime() then return end
 
-    if pPlayer:WaterLevel() == 3 then
-        self:PlayEmptySound()
-        self:SetNextPrimaryAttack(CurTime() + 0.15)
-        return false
-    end
+	if pPlayer:WaterLevel() == 3 then
+		self:PlayEmptySound()
+		self:SetNextPrimaryAttack( CurTime() + 0.2 )
+		return false
+	end
 
-    -- Out of ammo?
-    if self:Clip1() <= 0 then
-        self:Reload()
-        if self:Clip1() == 0 then
-            self:PlayEmptySound()
-            self:SetNextPrimaryAttack(CurTime() + 0.2)
-        end
-        return false
-    end
+	local spread = self:BuildSpread()
+	if not self:BaseGunFire( spread, self:GetWeaponInfo().CycleTime, true ) then
+		return
+	end
 
-    self:SendWeaponAnim(self:TranslateViewModelActivity(ACT_VM_PRIMARYATTACK))
+	self:SetSpecialReload( 0 )
 
-    self:SetClip1(self:Clip1() - 1)
+	local angle = pPlayer:GetViewPunchAngles()
+	-- Update punch angles.
+	if not pPlayer:OnGround() then
+		angle.x = angle.x - util.SharedRandom( "M3PunchAngleGround" , 4, 6 )
+	else
+		angle.x = angle.x - util.SharedRandom( "M3PunchAngle" , 8, 11 )
+	end
+	pPlayer:SetViewPunchAngles( angle )
 
-    -- player "shoot" animation
-    pPlayer:DoAttackEvent()
-
-    self:FireCSSBullet(pPlayer:GetAimVector():Angle() + 2 * pPlayer:GetViewPunchAngles(), true, 0.0675)
-
-    self:DoFireEffects()
-
-    if self:Clip1() ~= 0 then
-        self:SetPumpTime(CurTime() + 0.5)
-    end
-
-    local cycletime = 0.875
-    self:SetNextPrimaryAttack(CurTime() + cycletime)
-    self:SetNextSecondaryAttack(CurTime() + cycletime)
-
-    if self:Clip1() ~= 0 then
-        self:SetNextIdle(CurTime() + 2.5)
-    else
-        self:SetNextIdle(CurTime() + cycletime)
-    end
-    self:SetSpecialReload(0)
-
-    self:SetLastFire(CurTime())
-
-    local angle = pPlayer:GetViewPunchAngles()
-
-    -- Update punch angles.
-    if not pPlayer:OnGround() then
-        angle.x = angle.x - util.SharedRandom("M3PunchAngleGround", 4, 6)
-    else
-        angle.x = angle.x - util.SharedRandom("M3PunchAngle", 8, 11)
-    end
-
-    pPlayer:SetViewPunchAngles(angle)
-
-    return true
+	return true
 end
 
 function SWEP:Reload()
-    local pPlayer = self:GetOwner()
-    if not IsValid(pPlayer) then return false end
+	local pPlayer = self.Owner
+	if not IsValid( pPlayer ) then return end
+	
+	if pPlayer:GetAmmoCount( self.Primary.Ammo ) <= 0 or self:Clip1() >= self.Primary.ClipSize then return end
+	if self:GetNextPrimaryAttack() > CurTime() then return end
 
-    if pPlayer:GetAmmoCount(self:GetPrimaryAmmoType()) <= 0 or self:Clip1() == self:GetMaxClip1() then
-        return true
-    end
+	if self:GetSpecialReload() == 0 then
+		pPlayer:SetAnimation( PLAYER_RELOAD )
+		self:SendWeaponAnim( ACT_SHOTGUN_RELOAD_START )
+		self:SetSpecialReload( 1 )
 
-    if self:GetNextPrimaryAttack() > CurTime() then
-        return true
-    end
+		self:SetNextPrimaryAttack( CurTime() + 0.5 )
+		self:SetNextIdle( CurTime() + 0.5 )
 
-    if self:GetSpecialReload() == 0 then
-        pPlayer:SetAnimation(PLAYER_RELOAD)
+		-- DoAnimationEvent( PLAYERANIMEVENT_RELOAD_START ) - Missing event
+		return true
+	elseif self:GetSpecialReload() == 1 then
+		if self:GetNextIdle() > CurTime() then
+			return true
+		end
 
-        self:SendWeaponAnim(ACT_SHOTGUN_RELOAD_START)
-        self:SetSpecialReload(1)
-        self:SetNextPrimaryAttack(CurTime() + 0.5)
-        self:SetNextSecondaryAttack(CurTime() + 0.5)
-        self:SetNextIdle(CurTime() + 0.5)
+		self:SetSpecialReload( 2 )
+		self:SendWeaponAnim( ACT_VM_RELOAD )
+		self:SetNextIdle( CurTime() + 0.5 )
 
-        pPlayer:DoAnimationEvent(PLAYERANIMEVENT_RELOAD)
+		if self:Clip1() >= 7 then
+			pPlayer:DoAnimationEvent( PLAYERANIMEVENT_RELOAD_END )
+		else
+			pPlayer:DoAnimationEvent( PLAYERANIMEVENT_RELOAD_LOOP )
+		end
+	else
+		self:SetClip1( self:Clip1() + 1 )
+		pPlayer:DoAnimationEvent( PLAYERANIMEVENT_RELOAD )
+		pPlayer:RemoveAmmo( 1, self.Primary.Ammo )
+		self:SetSpecialReload( 1 )
+	end
 
-        return true
-    elseif self:GetSpecialReload() == 1 then
-        if self:GetNextIdle() > CurTime() then
-            return true
-        end
-
-        self:SetSpecialReload(2)
-        self:SendWeaponAnim(ACT_VM_RELOAD)
-        self:SetNextIdle(CurTime() + 0.5)
-
-        if self:Clip1() == self:GetMaxClip1() - 1 then
-            pPlayer:DoAnimationEvent(PLAYERANIMEVENT_RELOAD_END)
-        else
-            pPlayer:DoAnimationEvent(PLAYERANIMEVENT_RELOAD_LOOP)
-        end
-    else
-        self:SetClip1(self:Clip1() + 1)
-        pPlayer:RemoveAmmo(1, self:GetPrimaryAmmoType())
-
-        self:SetSpecialReload(1)
-    end
-
-    return true
+	return true
 end
 
-function SWEP:Idle()
-    local pPlayer = self:GetOwner()
-    if not IsValid(pPlayer) then return false end
+function SWEP:Think()
+	local pPlayer = self.Owner
+	if not IsValid( pPlayer ) then return end
 
-    if self:GetPumpTime() < CurTime() then
-        self:SetPumpTime(0)
-    end
-
-    if CurTime() > self:GetNextIdle() then
-        if self:Clip1() == 0 and self:GetSpecialReload() == 0 and pPlayer:GetAmmoCount(self:GetPrimaryAmmoType()) > 0 then
-            self:Reload()
-        elseif self:GetSpecialReload() ~= 0 then
-            if self:Clip1() ~= self:GetMaxClip1() and pPlayer:GetAmmoCount(self:GetPrimaryAmmoType()) > 0 then
-                self:Reload()
-            else
-                self:SendWeaponAnim(ACT_SHOTGUN_RELOAD_FINISH)
-
-                self:SetSpecialReload(0)
-                self:SetNextIdle(CurTime() + 1.5)
-            end
-        else
-            self:SendWeaponAnim(ACT_VM_IDLE)
-        end
-    end
+	if self:GetNextIdle() < CurTime() then
+		if self:Clip1() == 0 and self:GetSpecialReload() == 0 and pPlayer:GetAmmoCount( self.Primary.Ammo ) ~= 0 then
+			self:Reload()
+		elseif self:GetSpecialReload() ~= 0 then
+			if self:Clip1() ~= self:GetMaxClip1() and pPlayer:GetAmmoCount( self.Primary.Ammo ) ~= 0 then
+				self:Reload()
+			else
+				self:SendWeaponAnim( ACT_SHOTGUN_RELOAD_FINISH )
+				self:SetSpecialReload( 0 )
+				self:SetNextIdle( CurTime() + 1.5 )
+			end
+		else
+			self:SendWeaponAnim( ACT_VM_IDLE )
+		end
+	end
 end
+SWEP.AdminOnly = false
