@@ -211,7 +211,8 @@ function SWEP:Think()
 
 		self:SetInReload( false )
 	end
-
+	if CurTime() ~= UnPredictedCurTime() then return end
+	
 	local plycmd = pPlayer:GetCurrentCommand()
 
 	if not plycmd:KeyDown( IN_ATTACK ) and not plycmd:KeyDown( IN_ATTACK2 ) then
