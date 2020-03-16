@@ -143,6 +143,9 @@ function SWEP:Initialize()
 	self:SetWeaponID( CS_WEAPON_AK47 )
 end
 
+function SWEP:PreDrawViewModel(vm, weapon, ply)
+end
+
 function SWEP:PrimaryAttack()
 	if self:GetNextPrimaryAttack() > CurTime() then return end
 
@@ -150,28 +153,24 @@ function SWEP:PrimaryAttack()
 end
 
 function SWEP:SecondaryAttack()
-	local pPlayer = self:GetOwner();
+	local pPlayer = self:GetOwner()
+    if not IsValid(pPlayer) then return end
 
-	if not IsValid(pPlayer) then
-		return;
-	end
-	if (self:GetZoomFullyActiveTime() > CurTime() or self:GetNextPrimaryAttack() > CurTime()) then
-		self:SetNextSecondaryFire(self:GetZoomFullyActiveTime() + 0.15)
-		return
-	end
+    if self:GetZoomFullyActiveTime() > CurTime() or self:GetNextPrimaryAttack() > CurTime() then
+        self:SetNextSecondaryFire(self:GetZoomFullyActiveTime() + 0.15)
+        return
+    end
 
-	if ( not self:IsScoped() ) then
-		self:SetFOVRatio( 55/90, 0.2 );
-	elseif (FloatEquals(self:GetFOVRatio(), 55/90)) then
-		self:SetFOVRatio( 1, 0.08 );
-	else
-		--FIXME: This seems wrong
-		self:SetFOVRatio( 1, 0);
-	end
+    if not self:IsScoped() then
+        self:SetFOVRatio( 55 / 90, 0.2 )
+    elseif (FloatEquals(self:GetFOVRatio(), 55 / 90)) then
+        self:SetFOVRatio(1, 0.15)
+    else
+        self:SetFOVRatio(1, 0)
+    end
 
-	self:SetNextSecondaryFire(CurTime() + 0.3);
-	self:SetZoomFullyActiveTime(CurTime() + 0.2); -- The worst zoom time from above.
-
+    self:SetNextSecondaryFire(CurTime() + 0.3)
+    self:SetZoomFullyActiveTime(CurTime() + 0.2) -- The worst zoom time from above.
 end
 
 function SWEP:IsScoped()
@@ -205,4 +204,12 @@ function SWEP:GunFire( spread )
 	else
 		self:KickBack(0.625, 0.375, 0.25, 0.0125, 4, 2.25, 9);
 	end
+end
+
+function SWEP:GetSpeedRatio()
+    if self:IsScoped() then
+        return 200 / 260
+    end
+
+    return 1
 end

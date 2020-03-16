@@ -356,11 +356,11 @@ if CLIENT then
 	end
 
 	f("AK47","AK-47")
-	f"Aug"
+	f("Aug","AUG")
 	f"AWP"
 	f("DesertEagle","Desert Eagle")
 	f"Elites"
-	f"Famas"
+	f("Famas","FAMAS")
 	f"FiveSeven"
 	f"Flashbang"
 	f"G3SG1"
@@ -379,7 +379,7 @@ if CLIENT then
 	f"SG550"
 	f"SG552"
 	f("Smoke_Grenade","Smoke grenade")
-	f"Tmp"
+	f("Tmp","TMP")
 	f"UMP45"
 	f"USP45"
 	f("xm1014","XM1014")
@@ -401,6 +401,10 @@ if CLIENT then
 	do
 		language.Add("BULLET_PLAYER_"..str..'_ammo',trans)
 	end
+
+	language.Add("Cstrike_TitlesTXT_Switch_To_BurstFire", "Switched to burst-fire mode")
+	language.Add("Cstrike_TitlesTXT_Switch_To_FullAuto", "Switched to automatic")
+	language.Add("Cstrike_TitlesTXT_Switch_To_SemiAuto", "Switched to semi-automatic")
 
 	spawnmenu.AddContentType( "cssweapon", function( container, obj )
 
