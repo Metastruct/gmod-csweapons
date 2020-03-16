@@ -356,11 +356,11 @@ if CLIENT then
 	end
 
 	f("AK47","AK-47")
-	f"AUG"
+	f("Aug","AUG")
 	f"AWP"
 	f("DesertEagle","Desert Eagle")
 	f"Elites"
-	f"FAMAS"
+	f("Famas","FAMAS")
 	f"FiveSeven"
 	f"Flashbang"
 	f"G3SG1"
@@ -369,7 +369,7 @@ if CLIENT then
 	f("HE_Grenade","HE Grenade")
 	f"Knife"
 	f"M249"
-	f"M3"
+	f("m3","M3")
 	f"M4A1"
 	f"MAC10"
 	f"MP5"
@@ -378,16 +378,12 @@ if CLIENT then
 	f"Scout"
 	f"SG550"
 	f"SG552"
-	f("Smoke_Grenade","Smoke Grenade")
-	f"TMP"
+	f("Smoke_Grenade","Smoke grenade")
+	f("Tmp","TMP")
 	f"UMP45"
 	f"USP45"
-	f"XM1014"
+	f("xm1014","XM1014")
 	f"C4"
-
-	language.Add("Cstrike_TitlesTXT_Switch_To_BurstFire", "Switched to burst-fire mode")
-	language.Add("Cstrike_TitlesTXT_Switch_To_FullAuto", "Switched to automatic")
-	language.Add("Cstrike_TitlesTXT_Switch_To_SemiAuto", "Switched to semi-automatic")
 
 	-- Ammos
 	for str,trans in next,{
