@@ -150,6 +150,7 @@ function SWEP:Initialize()
 	self:SetWeaponID( CS_WEAPON_M4A1 )
 	self:SetDoneSwitchingSilencer( 0 )
 	self:SetDelayFire( true )
+	self:SetHasSilencer( true )
 end
 
 function SWEP:Deploy()
