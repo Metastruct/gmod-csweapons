@@ -142,6 +142,7 @@ function SWEP:Initialize()
 	BaseClass.Initialize( self )
 	self:SetHoldType( "pistol" )
 	self:SetWeaponID( CS_WEAPON_USP )
+	self:SetHasSilencer( true )
 end
 
 function SWEP:Deploy()
