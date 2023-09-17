@@ -226,4 +226,3 @@ function SWEP:GunFire( spread )
 end
 
 
-SWEP.AdminOnly = true
